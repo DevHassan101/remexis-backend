@@ -7,7 +7,7 @@ export default function ArticleCard({ article }) {
       {/* Article Image */}
       <div className="relative h-48 w-full">
         <Image
-          src={article.imageUrl}
+          src={article.banner}
           alt={article.title}
           fill
           className="object-cover"
