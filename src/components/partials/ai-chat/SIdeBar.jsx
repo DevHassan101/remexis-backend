@@ -1,4 +1,4 @@
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '../../../context/ThemeContext';
 import { Icon } from "@iconify/react";
 import Image from "next/image";
 import avatar from '../../../../public/assets/icons/man.png';

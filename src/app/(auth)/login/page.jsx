@@ -10,7 +10,7 @@ import { signIn, getSession, useSession } from "next-auth/react";
 import { getServerSession } from "next-auth";
 
 export default function Login() {
-  const { data: session, status } = getServerSession();
+const { data: session, status } = useSession();
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");

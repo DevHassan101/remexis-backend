@@ -1,11 +1,11 @@
 "use client";
 
-import Sidebar from '@/components/partials/ai-chat/SIdeBar';
+import Sidebar from '../../../components/partials/ai-chat/SIdeBar';
 import { Icon } from '@iconify/react';
 import Image from 'next/image';
 import React, { useEffect, useRef, useState } from 'react';
 import avatar from "../../../../public/assets/icons/man.png"
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme } from '../../../context/ThemeContext';
 
 
 const PlusMenu = () => {

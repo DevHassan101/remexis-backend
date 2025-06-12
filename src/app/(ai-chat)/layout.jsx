@@ -1,7 +1,7 @@
 "use client"
 
-import Sidebar from '@/components/partials/ai-chat/SIdeBar'
-import { ThemeProvider } from '@/context/ThemeContext';
+import Sidebar from '../../components/partials/ai-chat/SIdeBar'
+import { ThemeProvider } from '../../context/ThemeContext';
 import React, { useState } from 'react'
 
 function AiChatLayout({ children }) {

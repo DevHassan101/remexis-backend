@@ -1,6 +1,7 @@
 import { SessionProvider } from "next-auth/react";
 import "./globals.css";
 import localFont from "next/font/local";
+import { Providers } from "./providers";
 
 // Inter font family
 const inter = localFont({
@@ -118,7 +119,9 @@ export default function RootLayout({ children }) {
       <body
         className={`${inter.variable} ${spaceGrotesk.variable} ${poppins.variable}`}
       >
+        <Providers>
         {children}
+        </Providers>
       </body>
     </html>
   );

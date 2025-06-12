@@ -3,7 +3,11 @@ import { prisma } from "../../../../lib/prisma";
 
 export async function GET() {
     try {
-        const users = await prisma.user.findMany();
+        const users = await prisma.user.findMany({
+            where : {
+                role: 'USER'
+            }
+        });
         return NextResponse.json(
             {message: "Users retrieved successfully", users: users},
             {status: 200}

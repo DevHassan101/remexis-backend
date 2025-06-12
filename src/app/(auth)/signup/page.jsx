@@ -1,12 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { TextField } from "@mui/material";
 import { Icon } from "@iconify/react";
 import { useRouter } from "next/navigation"
-import { signIn, getSession } from "next-auth/react"
+import { signIn, getSession, useSession } from "next-auth/react"
 
 export default function Login() {
   const [firstName, setFirstName] = useState("");
@@ -16,7 +16,17 @@ export default function Login() {
   const [error, setError] = useState("")
   const [loading, setLoading] = useState(false)
   const router = useRouter()
+  const { data: session, status } = useSession();
 
+  // Redirect if already logged in
+  useEffect(() => {
+    // alert(status)
+    console.warn(session);
+
+    if (status === "authenticated") {
+      router.push("/dashboard");
+    }
+  }, [status, router]);
   const handleSubmit = async (e) => {
     e.preventDefault();
     // Handle login logic here
