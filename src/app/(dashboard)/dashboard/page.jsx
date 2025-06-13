@@ -1,27 +1,97 @@
 import { authOptions } from "../../../lib/auth";
-import { usersData } from "../../../constants/data";
 import { Icon } from "@iconify/react";
 import { getServerSession } from "next-auth";
-import React from "react";
-// import { useState, useEffect } from "react";
+import { React } from "react";
 import { redirect } from "next/navigation"
-import { getSession } from "next-auth/react";
+import { prisma } from "../../../lib/prisma";
+import withAuth from "next-auth/middleware";
 
 const Dashboard = async () => {
-  // const { data: session, status } = getSession();
-    // Redirect if already logged in
-    // useEffect(() => {
-    //   if (status === "authenticated") {
-    //     router.push("/dashboard");
-    //   }
-    // }, [status, router]);
-  
+
   const session = await getServerSession(authOptions);
   console.warn(session);
 
-  if (!session) {
-    redirect("/login")
+  // if (!session) {
+  //   redirect("/login")
+  // }
+  let totalUsers = 0;
+  let totalAdmins = 0;
+  let totalArticles = 0;
+  let recentUsers = [];
+
+  try {
+    // Get total users count
+    totalUsers = await prisma.user.count({
+      where: {
+        role: 'USER'
+      }
+    });
+
+    // Get total admins count
+    totalAdmins = await prisma.user.count({
+      where: {
+        role: 'ADMIN'
+      }
+    });
+
+    // Get total articles count (if you have an Article model)
+    totalArticles = await prisma.article.count();
+
+    // Get recent users (last 5)
+    recentUsers = await prisma.user.findMany({
+      take: 5,
+      orderBy: {
+        createdAt: 'desc'
+      },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        createdAt: true
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching dashboard data:', error);
+    // Set default values if database fetch fails
+    totalUsers = 0;
+    totalAdmins = 0;
+    totalArticles = 0;
+    recentUsers = [];
   }
+
+  // Helper function to format date
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
+
+  // Helper function to get user initials
+  const getInitials = (name) => {
+    return name
+      .split(' ')
+      .map(word => word.charAt(0))
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
+
+  // Helper function to get avatar color
+  const getAvatarColor = (index) => {
+    const colors = [
+      'bg-blue-500',
+      'bg-green-500',
+      'bg-purple-500',
+      'bg-pink-500',
+      'bg-indigo-500'
+    ];
+    return colors[index % colors.length];
+  };
+
+
   return (
     <>
       {/* Header */}
@@ -46,10 +116,10 @@ const Dashboard = async () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide">
-                  Active Users
+                  Total Users
                 </p>
                 <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">
-                  345
+                  {totalUsers}
                 </p>
               </div>
             </div>
@@ -59,10 +129,10 @@ const Dashboard = async () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide">
-                  All Active Users
+                  Total Admins
                 </p>
                 <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">
-                  345
+                  {totalAdmins}
                 </p>
               </div>
             </div>
@@ -72,10 +142,10 @@ const Dashboard = async () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs sm:text-sm text-gray-500 uppercase tracking-wide">
-                  Average Performance Index
+                  Total Articles
                 </p>
                 <p className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">
-                  345
+                  {totalArticles}
                 </p>
               </div>
             </div>
@@ -85,9 +155,9 @@ const Dashboard = async () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs sm:text-sm text-orange-100 uppercase tracking-wide">
-                  Active Users
+                  Users/Admins
                 </p>
-                <p className="text-2xl sm:text-3xl font-bold mt-1">24/30</p>
+                <p className="text-2xl sm:text-3xl font-bold mt-1">{totalUsers}/{totalAdmins}</p>
               </div>
             </div>
           </div>
@@ -150,50 +220,51 @@ const Dashboard = async () => {
           <div className="overflow-x-auto">
             <table className="w-full">
               <tbody className="divide-y divide-gray-200">
-                {usersData.map((user) => (
-                  <tr key={user.id} className="hover:bg-gray-50">
-                    <td className="px-4 sm:px-6 py-4">
-                      <div className="flex items-center">
-                        <div
-                          className={`w-8 h-8 ${user.avatarColor} rounded-full flex items-center justify-center mr-3`}
-                        >
-                          <span className="text-white text-sm font-medium">
-                            {user.initials}
-                          </span>
+                {recentUsers.length > 0 ? (
+                  recentUsers.map((user, index) => (
+                    <tr key={user.id} className="hover:bg-gray-50">
+                      <td className="px-4 sm:px-6 py-4">
+                        <div className="flex items-center">
+                          <div
+                            className={`w-8 h-8 ${getAvatarColor(index)} rounded-full flex items-center justify-center mr-3`}
+                          >
+                            <span className="text-white text-sm font-medium">
+                              {getInitials(user.name)}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">
+                              {user.name}
+                            </p>
+                            <p className="text-sm text-gray-500">{user.email}</p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-medium text-gray-900">
-                            {user.name}
-                          </p>
-                          <p className="text-sm text-gray-500">{user.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-500 hidden sm:table-cell">
-                      {user.role}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4 text-sm text-gray-500 hidden md:table-cell">
-                      {user.date}
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <span
-                        className={`inline-flex px-2 py-1 text-xs font-medium ${user.statusColor} rounded-full`}
-                      >
-                        {user.status}
-                      </span>
-                    </td>
-                    <td className="px-4 sm:px-6 py-4">
-                      <div className="flex items-center space-x-2">
-                        <button className="p-1 text-gray-400 hover:text-gray-600">
-                          <Icon icon="proicons:pencil" width="20" height="20" />
-                        </button>
-                        <button className="p-1 text-gray-400 hover:text-gray-600">
-                          <Icon icon="tabler:trash" width="20" height="20" />
-                        </button>
-                      </div>
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 text-sm text-gray-500 hidden sm:table-cell">
+                        {
+                          user.role == "ADMIN" ? (
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              {user.role}
+                            </span>
+                          ) : (
+
+                            <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                              {user.role}
+                            </span>
+                          )
+                        }
+                      </td>
+                      <td className="px-4 sm:px-6 py-4 text-sm text-gray-500 hidden md:table-cell">
+                        {formatDate(user.createdAt)}
+                      </td>
+                    </tr>
+                  ))) : (
+                  <tr>
+                    <td colSpan="5" className="px-4 sm:px-6 py-8 text-center text-gray-500">
+                      No recent users found
                     </td>
                   </tr>
-                ))}
+                )}
               </tbody>
             </table>
           </div>
