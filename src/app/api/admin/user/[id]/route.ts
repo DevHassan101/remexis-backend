@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "../../../../../lib/prisma";
-import bcrypt from "bcryptjs"; // or whatever hashing library you're using
 
 export async function PUT(req: NextRequest, { params }) {
     try {
@@ -106,6 +105,49 @@ export async function PUT(req: NextRequest, { params }) {
 
     } catch (error) {
         console.error("Update admin user error:", error);
+        return NextResponse.json(
+            { error: "Internal server error" },
+            { status: 500 }
+        );
+    }
+}
+export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+    try {
+        
+        const { id: userId } = params;
+
+        // Remove the parseInt() since your ID is a string, not a number
+        if (!userId || typeof userId !== 'string' || userId.trim() === '') {
+            return NextResponse.json(
+                { error: "Invalid or missing user ID" },
+                { status: 400 }
+            );
+        }
+
+        // Check if user exists
+        const existingUser = await prisma.user.findUnique({
+            where: { id: userId }
+        });
+
+        if (!existingUser) {
+            return NextResponse.json(
+                { error: "User not found" },
+                { status: 404 }
+            );
+        }
+
+        // Delete user from database
+        await prisma.user.delete({
+            where: { id: userId }
+        });
+
+        return NextResponse.json(
+            { message: "User deleted successfully" },
+            { status: 200 }
+        );
+
+    } catch (error) {
+        console.error("Delete user error:", error);
         return NextResponse.json(
             { error: "Internal server error" },
             { status: 500 }

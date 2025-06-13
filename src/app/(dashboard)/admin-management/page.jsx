@@ -3,14 +3,23 @@ import Modal from '../../../components/ui/Modal'
 import { Icon } from '@iconify/react'
 import React, { useEffect, useState } from 'react'
 
-const AddModal = ({ isModalOpen, setIsModalOpen, onUserAdded }) => {
+const AddModal = ({ isModalOpen, setIsModalOpen, onUserAdded, editingUser, setEditingUser }) => {
     const [name, setName] = useState('');
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [editingUser, setEditingUser] = useState(null);
+
+    // Populate form when editing user
+    useEffect(() => {
+        if (editingUser) {
+            setName(editingUser.name || '');
+            setEmail(editingUser.email || '');
+            setPassword(''); // Don't populate password for security
+            setConfirmPassword('');
+        }
+    }, [editingUser]);
 
     const resetForm = () => {
         setName('');
@@ -25,19 +34,28 @@ const AddModal = ({ isModalOpen, setIsModalOpen, onUserAdded }) => {
         e.preventDefault();
 
         // Validation
-        if (!name || !email || !password) {
+        if (!name || !email) {
             setError("Please fill in all required fields");
             return;
         }
 
-        if (password !== confirmPassword) {
-            setError("Passwords do not match");
+        // For new users, password is required. For editing, password is optional
+        if (!editingUser && !password) {
+            setError("Password is required for new users");
             return;
         }
 
-        if (password.length < 6) {
-            setError("Password must be at least 6 characters long");
-            return;
+        // If password is provided (new user or updating password), validate it
+        if (password) {
+            if (password !== confirmPassword) {
+                setError("Passwords do not match");
+                return;
+            }
+
+            if (password.length < 6) {
+                setError("Password must be at least 6 characters long");
+                return;
+            }
         }
 
         setError("");
@@ -48,17 +66,24 @@ const AddModal = ({ isModalOpen, setIsModalOpen, onUserAdded }) => {
             const url = isEditing ? `/api/admin/adminUser/${editingUser.id}` : '/api/admin/adminUser';
             const method = isEditing ? 'PUT' : 'POST';
 
+            // Prepare request body
+            const requestBody = {
+                name: name,
+                email: email,
+                role: 'ADMIN'
+            };
+
+            // Only include password if it's provided
+            if (password) {
+                requestBody.password = password;
+            }
+
             const result = await fetch(url, {
                 method: method,
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify({
-                    name: name,
-                    email: email,
-                    password: password,
-                    role: 'ADMIN' // Set role as ADMIN
-                })
+                body: JSON.stringify(requestBody)
             });
 
             if (result.ok) {
@@ -126,25 +151,29 @@ const AddModal = ({ isModalOpen, setIsModalOpen, onUserAdded }) => {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label className="block text-sm font-medium mb-1">Password *</label>
+                        <label className="block text-sm font-medium mb-1">
+                            Password {editingUser ? '(leave blank to keep current)' : '*'}
+                        </label>
                         <input
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Enter Password"
+                            placeholder={editingUser ? "Enter new password (optional)" : "Enter Password"}
                             className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                            required
+                            required={!editingUser}
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium mb-1">Confirm Password *</label>
+                        <label className="block text-sm font-medium mb-1">
+                            Confirm Password {editingUser && !password ? '' : '*'}
+                        </label>
                         <input
                             type="password"
                             value={confirmPassword}
                             onChange={(e) => setConfirmPassword(e.target.value)}
                             placeholder="Confirm Password"
                             className="w-full border border-gray-300 rounded-md px-4 py-2 focus:outline-none focus:ring-2 focus:ring-orange-500"
-                            required
+                            required={!editingUser || password}
                         />
                     </div>
                 </div>
@@ -179,6 +208,7 @@ function AdminManagement() {
     const [users, setUsers] = useState([]);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [editingUser, setEditingUser] = useState(null);
 
     const fetchUsers = async () => {
         setLoading(true);
@@ -216,6 +246,41 @@ function AdminManagement() {
         setSearchTerm(event.target.value);
     };
 
+    // Handle edit user
+    const handleEditUser = (user) => {
+        setEditingUser(user);
+        setIsModalOpen(true);
+    };
+
+    // Handle add new user
+    const handleAddUser = () => {
+        setEditingUser(null);
+        setIsModalOpen(true);
+    };
+
+    // Delete user function
+    const deleteUser = async (userId) => {
+        if (!confirm("Are you sure you want to delete this user?")) {
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/admin/adminUser/${userId}`, {
+                method: "DELETE",
+            });
+
+            if (response.ok) {
+                fetchUsers();
+            } else {
+                const errorData = await response.json();
+                alert(errorData.error || "Failed to delete user");
+            }
+        } catch (error) {
+            console.error("Error deleting user:", error);
+            alert("Error deleting user");
+        }
+    };
+
     // Format date helper function
     const formatDate = (dateString) => {
         if (!dateString) return 'N/A';
@@ -248,7 +313,7 @@ function AdminManagement() {
                 </div>
                 <div className='flex flex-1 gap-2 h-fit justify-end items-end'>
                     <button
-                        onClick={() => setIsModalOpen(true)}
+                        onClick={handleAddUser}
                         className='px-6 py-2 rounded-md bg-primary-main cursor-pointer hover:bg-primary-700 duration-300 transition-all flex items-center text-white whitespace-nowrap'
                     >
                         <Icon icon="iconoir:plus" width="20" height="20" className='inline-block' />
@@ -303,16 +368,18 @@ function AdminManagement() {
                                         <td className="px-4 py-3">
                                             <div className="flex space-x-2">
                                                 <button
+                                                    onClick={() => handleEditUser(user)}
                                                     className="p-2 rounded-full bg-gray-100 hover:bg-gray-200"
                                                     title="Edit Admin"
                                                 >
                                                     <Icon icon="tabler:edit" className="text-gray-600" width={16} height={16} />
                                                 </button>
                                                 <button
-                                                    className="p-2 rounded-full bg-red-100 hover:bg-red-200"
+                                                    onClick={() => deleteUser(user.id)}
+                                                    className="p-2 rounded-full bg-gray-100 hover:bg-gray-200"
                                                     title="Delete Admin"
                                                 >
-                                                    <Icon icon="tabler:trash" className="text-red-600" width={16} height={16} />
+                                                    <Icon icon="tabler:trash" width={16} height={16} />
                                                 </button>
                                             </div>
                                         </td>
@@ -336,6 +403,8 @@ function AdminManagement() {
                 isModalOpen={isModalOpen}
                 setIsModalOpen={setIsModalOpen}
                 onUserAdded={fetchUsers}
+                editingUser={editingUser}
+                setEditingUser={setEditingUser}
             />
         </div>
     );
